@@ -15,7 +15,7 @@ resource "aws_iam_policy" "dynamo-policy" {
                 "dynamodb:Query",
                 "dynamodb:UpdateItem"
             ],
-            "Resource": "arn:aws:dynamodb:${var.region}:${data.aws_caller_identity.current.account_id}:table/url-shortener-table"
+            "Resource": "arn:aws:dynamodb:${var.region}:${data.aws_caller_identity.current.account_id}:table/url-shortener-table2"
         }
     ]
 }
@@ -46,11 +46,14 @@ EOF
 }
 
 resource "aws_iam_role_policy_attachment" "aws-lambda-policy" {
+  depends_on = [  aws_iam_role.AWSAccessRole ]
   role       = aws_iam_role.AWSAccessRole.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 resource "aws_iam_role_policy_attachment" "aws-dynamo-policy" {
+
+  depends_on = [ aws_iam_policy.dynamo-policy,   aws_iam_role.AWSAccessRole ]
   role       = aws_iam_role.AWSAccessRole.name
   policy_arn = aws_iam_policy.dynamo-policy.arn
 }

@@ -23,6 +23,8 @@ resource "aws_api_gateway_method" "admin-get" {
 }
 
 resource "aws_api_gateway_method_response" "admin_response_200" {
+
+  depends_on = [ aws_api_gateway_method.admin-get ]
   rest_api_id   = aws_api_gateway_rest_api.url-shortener-api.id
   resource_id   = aws_api_gateway_resource.admin.id
   http_method   = "GET"
@@ -90,7 +92,7 @@ resource "aws_api_gateway_integration_response" "admin_integration_response" {
             // process the form
             $.ajax({
                 type        : 'POST',
-                url         : '/create',
+                url         : '/dev/create',
                 data        : JSON.stringify({ 'long_url' : $('#url_input').val(), 'cdn_prefix': window.location.hostname }),
                 contentType : 'application/json; charset=utf-8',
                 dataType    : 'json',
@@ -158,7 +160,7 @@ EOF
 
 
 
-
+# GET SHORT LINK METHOD
 
 
 resource "aws_api_gateway_resource" "short" {
@@ -180,15 +182,16 @@ resource "aws_api_gateway_method" "short-get" {
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_method_response" "short_response_200" {
+resource "aws_api_gateway_method_response" "short_response_301" {
 
+  depends_on = [ aws_api_gateway_method.short-get ]
   rest_api_id   = aws_api_gateway_rest_api.url-shortener-api.id
   resource_id   = aws_api_gateway_resource.shortid.id
   http_method   = "GET"
-  status_code = "200"
+  status_code = "301"
 
   response_parameters = {
-    "method.response.header.Location"     = false
+    "method.response.header.Location"     = true
   }
 }
 
@@ -201,7 +204,7 @@ resource "aws_api_gateway_integration" "short_integration" {
   
   integration_http_method = "POST"
   type                    = "AWS_PROXY"
-  uri                     = aws_lambda_function.url-shortener-retrieve.invoke_arn
+  uri                     = aws_lambda_function.url-shortener-retrieve2.invoke_arn
 
   request_templates = {
     "application/json" = <<EOF
@@ -215,11 +218,12 @@ EOF
 
 
 resource "aws_api_gateway_integration_response" "short_integration_response" {
-  depends_on = [ aws_api_gateway_method_response.short_response_200]
+  depends_on = [ aws_api_gateway_integration.short_integration ]
   rest_api_id = aws_api_gateway_rest_api.url-shortener-api.id
   resource_id = aws_api_gateway_resource.shortid.id
   http_method = aws_api_gateway_method.short-get.http_method
   status_code = "301"
+  
 
    response_parameters = { 
     "method.response.header.Location" = "integration.response.body.location" 
@@ -229,9 +233,58 @@ resource "aws_api_gateway_integration_response" "short_integration_response" {
 
 
 
+# CREATE SHORT LINK METHOD
+
+# GET SHORT LINK METHOD
+
+
+resource "aws_api_gateway_resource" "create" {
+  rest_api_id = aws_api_gateway_rest_api.url-shortener-api.id
+  parent_id   = aws_api_gateway_rest_api.url-shortener-api.root_resource_id
+  path_part   = "create"
+}
+
+
+resource "aws_api_gateway_method" "create-post" {
+  rest_api_id   = aws_api_gateway_rest_api.url-shortener-api.id
+  resource_id   = aws_api_gateway_resource.create.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_method_response" "create_response" {
+
+  depends_on = [ aws_api_gateway_method.create-post ]
+  rest_api_id   = aws_api_gateway_rest_api.url-shortener-api.id
+  resource_id   = aws_api_gateway_resource.create.id
+  http_method   = "POST"
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Location"     = true
+  }
+}
+
+
+resource "aws_api_gateway_integration" "create_integration" {
+  
+  rest_api_id          = aws_api_gateway_rest_api.url-shortener-api.id
+  resource_id          = aws_api_gateway_resource.create.id
+  http_method          = aws_api_gateway_method.create-post.http_method
+  
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.url-shortener-create2.invoke_arn
+
+}
+
+
+
+
+
 # DEPLOYMENT and STAGING
 resource "aws_api_gateway_deployment" "deploy" {
-  depends_on = [ aws_api_gateway_integration.admin_integration, aws_api_gateway_integration.short_integration ]
+  depends_on = [ aws_api_gateway_integration.admin_integration, aws_api_gateway_integration.short_integration, aws_api_gateway_integration.create_integration ]
 
   rest_api_id = aws_api_gateway_rest_api.url-shortener-api.id
 
