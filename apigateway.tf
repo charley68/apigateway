@@ -203,7 +203,7 @@ resource "aws_api_gateway_integration" "short_integration" {
   http_method          = aws_api_gateway_method.short-get.http_method
   
   integration_http_method = "POST"
-  type                    = "AWS_PROXY"
+  type                    = "AWS"
   uri                     = aws_lambda_function.url-shortener-retrieve2.invoke_arn
 
   request_templates = {
